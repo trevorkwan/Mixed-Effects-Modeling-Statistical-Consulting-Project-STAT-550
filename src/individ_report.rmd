@@ -1,0 +1,68 @@
+---
+bibliography: report.bib
+output:
+  pdf_document:
+   extra_dependencies: ["fancyhdr","float"]
+   latex_engine: xelatex
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggpubr)
+library(knitr)
+library(gridExtra)
+library(knitr)
+library(dplyr)
+library(nlme)
+library(lme4)
+library(lmerTest)
+library(mice)
+```
+
+<!-- Titlepage -->
+\thispagestyle{empty}
+
+```{r child = 'individ_title_page.rmd'}
+```
+
+
+<!-- Summary -->
+
+```{r child = 'individ_summary.Rmd'}
+```
+
+
+\newpage
+\setcounter{page}{1}
+\pagestyle{fancy}
+\fancyhead[R]{\leftmark}
+\fancyhead[L]{}
+\fancyfoot[C]{\thepage}
+
+
+<!-- Intro/Background/EDA -->
+```{r child = 'individ_intro_background_EDA.Rmd'}
+```
+
+<!-- Formal Analysis -->
+```{r child = 'individ_formal_analysis.rmd'}
+```
+
+<!-- Conclusion and Discussion child file -->
+```{r child = 'individ_conclusion_discussion.rmd'}
+```
+
+\newpage
+# References
+<!-- This should automatically insert bibliography if we have a file referenced in the header -->
+<div id="refs"></div>
+<!-- Forces the references before the appendix -->
+\newpage
+```{r child = 'individ_appendix.rmd'}
+```

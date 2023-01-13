@@ -1,0 +1,21 @@
+
+# 4. Discussion
+The purpose of this study was to test whether subjects' mental distress would change over time, and whether this change in distress would be different between a treatment/intervention group and a control group. To do this, exploratory data analysis was first performed. Using only complete cases, a non-significant difference in GSI was found between the two treatment groups using the t-test, but a Wilcoxon test found that difference to be significant. Specifically, the median GSI of the treatment group was found to be slightly higher than the median GSI of the control group. Additional preliminary analyses were also done by plotting individual subjects' GSI trend over time. Large variations were found between individuals, suggesting a mixed-effects model may be useful. 
+All formal analyses were performed using data imputed with the multiple imputation method, and this imputation was based on the assumption that the data were missing at random.
+
+The first model was a comparison of means between the treatment and control group. Two different tests: the two-sample t-test and Wilcoxon-test were used for testing. These tests confirmed our preliminary results: the t-test was non-significant and the Wilcoxon-test was significant. The Wilcoxon-test was more robust because the Shapiro-Wilk test found the normality assumptions of the t-test to be violated. The second model was a mixed-effects means comparison model. This model was built upon the previous model, testing the effects of the treatment groups on the GSI score but also incorporating the random effects of subject, month, gender, and education. The results were consistent with the first t-test model, finding no significant difference between the treatment groups. The last model was a mixed-effects regression model testing the effect of the months variable on GSI score while incorporating the random effect of shared variance between month and gender varying by subject. Results of the final model found a small but significant decrease in GSI score per month. All mixed-effects models were selected based on AIC values, BIC values, and likelihood ratio test significance.
+
+## Limitations
+Missing data was a major issue in this study. Missing observations were treated with the multiple imputation method relying on the assumption that the data were missing at random. This was preferable to the complete cases method which required an even stronger assumption of the data to be missing completely at random.
+
+Another concern was the violation of the constant variance assumption in the mixed-effects regression model. Examination of residuals in the regression model found evidence of heteroscedasticity, which could potentially bias the decision to reject the null hypothesis.
+
+A third issue was the violation of the normality assumption in the means comparison t-test model. This reduces the power of the t-test and decreases the ability to detect a true difference. 
+
+A final limitation was an incongruency between the data available to be used and the research objective of the study. When assessing the relationship between GSI, treatment groups, and months, it would be preferable to account for the effects of more variables in addition to the random effects of gender and education. 
+
+## Future Recommendations
+Recommendations for study design and data collection are offered to lead to more robust studies in the future. First, it would be preferable to have a more even spread of monthly time points where data are collected. Second, more samples at both the individual measurement level and the subject level would allow for more accurate results and a greater number of complete observations.
+
+# 5. Conclusion
+In conclusion, results found a significant decrease in GSI scores for each additional month across all subjects. However, there was not enough evidence to conclude that this change in GSI scores was different between treatment and control subjects. Subsequent studies may have broader results if current limitations on missing data, violation of assumptions, and data collection are resolved. A further study with a larger, more comprehensive sample would be recommended.

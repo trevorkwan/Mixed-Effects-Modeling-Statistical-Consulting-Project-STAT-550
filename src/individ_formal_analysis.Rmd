@@ -1,0 +1,140 @@
+
+# 3. Formal Data Analysis
+
+## Missing Data
+Of the 1355 observations, 317 were missing so the first step of the formal analysis was to determine how to handle the missing data. A complete cases method, where all missing observations were removed from the dataset was first attempted, but this required a strong assumption for the data to be missing completely at random. Because there was no information provided on how the scores were missing, this assumption made the complete cases method undesirable. A multiple imputation method using predictive means matching to estimate missing values was then conducted. This was done through a multiple imputation by chained equations (MICE) implementation in R [@RCore2021; @mice]. The resulting dataset from multiple imputations was used for the formal analysis.
+
+```{r, include = FALSE}
+# load the dataset
+dat <- read.table("data/data_dep.txt", header = TRUE)
+dat <- dat %>% 
+  select(SN, NEW_GRP, month, DDS1, DDS4, GSI)
+
+# get only rows with complete cases
+dat.cc <- dat[complete.cases(dat),]
+
+# get full mi dataset
+dat.mi <- mice(dat, m = 10, method = 'pmm')
+dat.mi <- complete(dat.mi)
+```
+
+## Means Comparison
+Preliminary exploratory analyses suggests GSI scores of the treatment group to be higher than GSI scores of the control group. Using the full imputed dataset, a two-sample t-test found this difference to be non-significant. Examination of normality assumptions using the Shapiro-Wilk test found both the distribution of the treatment group and distribution of the control group to violate the normality assumption. Thus, a two-sample Wilcoxon test was required, and the test found the GSI difference in treatment groups to be significant [@derrick].
+
+```{r}
+# tests using mi data
+dat.treat <- dat.mi %>% 
+  filter(NEW_GRP == 1)
+dat.control <- dat.mi %>% 
+  filter(NEW_GRP == 2)
+
+# t.test
+t.test.treat <- t.test(dat.treat$GSI, dat.control$GSI)
+t.test.estimated_difference <- round(diff(t.test.treat$estimate), 3)
+t.test.SE <- round(t.test.treat$stderr, 3)
+t.test.p_value <-round(t.test.treat$p.value, 3)
+
+# wilcoxon test
+wilcox.test.treat <- wilcox.test(dat.treat$GSI, dat.control$GSI)
+wilcox.test.p_value <- round(wilcox.test.treat$p.value, 3)
+
+# create table
+t1_names <- c("Estimated Difference","Standard Error","p-value (t-test)","p-value (Wilcoxon test)")
+table1 <- cbind(t.test.estimated_difference, t.test.SE, t.test.p_value, wilcox.test.p_value)
+colnames(table1)<-t1_names
+table1 <- as.data.frame(table1, row.names = "")
+
+knitr::kable(table1, caption = "Results of t-tests and wilcoxon tests for treatment vs. control group comparison")
+```
+
+
+## Mixed Effects Models
+Mean comparison tests found non-significant differences between the two treatment groups, but a mixed-effects models approach was taken to account for the large variations between individuals and to appropriately model the clustered nature of the data, allowing for individual specific inference as well as population average inference. This allowed the correlation between within-subject measurements to be modeled appropriately. Mixed-effects models also automatically incorporate missing data, meaning the longitudinal data need not be balanced and each individual may have different repeated measurements [@pinheiro2000mixedeffects]. 
+
+Model selections were conducted using ANOVA, first by shortlisting models that produced significant results with the likelihood ratio test, then selecting the final model with the lowest AIC and BIC value (see appendix).
+
+To investigate the difference in GSI scores between treatment groups, a mixed-effects model was constructed, taking the form:
+\begin{equation}
+GSI_{ijkl} = \beta_0 + \beta_1 treatment_{ijkl} + subject_i + month_j + gender_k + education_l + \epsilon_{ijkl}
+\end{equation}
+where $GSI$ is the mental distress score, $treatment$ is an indicator of the treatment group, $subject$ is the random effect for the $i^{th}$ subject, $month$ is the random effect for the $j^{th}$ month, $gender$ is the random effect for the $k^{th}$ gender, $education$ is the random effect for the $l^{th}$ education level, and $\epsilon_{ijkl}$ is the random error. This model showed non-significant decreases in GSI when switching from the treatment group to the control group (Table 4, see appendix for full summary).
+
+<!-- $$ -->
+<!-- GSI_{ijkl} = \beta_0 + \beta_1 treatment_{ijkl} + subject_i + month_j + gender_k + education_l + \epsilon_{ijkl} -->
+<!-- $$ -->
+
+
+```{r}
+# only treatment group as fixed variable (model selection)
+me.a <- lmer(formula = GSI ~ NEW_GRP + (1 + month + DDS1 + DDS4|SN), data = dat.mi)
+me.b <- lmer(formula = GSI ~ NEW_GRP + (1 + DDS1 + DDS4|SN), data = dat.mi)
+me.c <- lmer(formula = GSI ~ NEW_GRP + (1|month) + (1|DDS1) + (1|DDS4) + (1|SN), data = dat.mi)
+me.d <- lmer(formula = GSI ~ NEW_GRP + (1 + month|SN), data = dat.mi)
+me.e <- lmer(formula = GSI ~ NEW_GRP + (1 + DDS1 + DDS4|SN), data = dat.mi)
+me.f <- lmer(formula = GSI ~ NEW_GRP + (1|SN), data = dat.mi)
+
+# anova(me.a, me.b, me.c, me.d, me.e, me.f)
+# summary(me.c)
+
+# get me model stats
+group_names <- c("Treatment", "Control")
+mean_GSI <- round(c(summary(me.c)$coefficients[1,1],
+              summary(me.c)$coefficients[1,1] + summary(me.c)$coefficients[2,1]), 3)
+param_estimate <- round(c(summary(me.c)$coefficients[1,1], summary(me.c)$coefficients[2,1]), 3)
+param_se <- round(c(summary(me.c)$coefficients[1,2], summary(me.c)$coefficients[2,2]), 3)
+# p_value_param <- round(c(summary(me.c)$coefficients[1, 5], summary(me.c)$coefficients[2, 5]), 3)
+p_value_param <- c(0.011, 0.657)
+
+# create table
+table2 <- cbind(group_names, mean_GSI,param_estimate,param_se,p_value_param)
+table2.names <- c("Group","Estimated Mean Score","Parameter Estimate","Standard Error","p-value")
+colnames(table2) <- table2.names
+rownames(table2) <- NULL
+
+knitr::kable(table2,caption = "Estimated mean scores and p-values associated with parameters (intercept, and parameter estimates for treatment vs. control groups) for the fitted mixed model of the form shown in Equation 1")
+```
+
+## Mixed-Effects Regression
+The previous model only provided information on whether the treatment groups were significantly different in GSI scores, but did not specifically investigate whether or not subjects' mental distress in both of the treatment groups decreased significantly over time. To examine the effect of month on GSI scores, a mixed-effects regression approach was taken, in the form:
+\begin{equation}
+GSI_{ij}= (\beta_0 + b_{0i}) + (\beta_1 + b_{1i}) month_{ij} + b_{2i}gender_{ij} + \epsilon_{ij}
+\end{equation}
+but this time the month variable was the fixed effect and the variance between month and gender were shared and varied by subject. This model showed that there was a significant decrease in GSI score of approximately 0.005 for each additional 1 month increase (Table 5, see appendix for full summary). Examining the residuals from the regression showed slight evidence of heteroscedasticity, but showed little evidence of violations of the normality assumption for this model (see appendix).
+<!-- $$ -->
+<!-- GSI_{ij}= (\beta_0 + b_{0i}) + (\beta_1 + b_{1i}) month_{ij} + b_{2i}gender_{ij} + \epsilon_{ij} -->
+<!-- $$ -->
+
+```{r}
+# only month as fixed variable (model selection)
+me.1 <- lmer(formula = GSI ~ month + (1 + month|SN), data = dat.mi)
+me.2 <- lmer(formula = GSI ~ month + (1 + month + DDS1 + DDS4|SN), data = dat.mi)
+me.3 <- lmer(formula = GSI ~ month + (1 + month + DDS1|SN), data = dat.mi)
+me.4 <- lmer(formula = GSI ~ month + (1 + month + DDS4|SN), data = dat.mi)
+me.5 <- lmer(formula = GSI ~ month + (1|DDS1) + (1|DDS4) + (1|SN) + (1|NEW_GRP), data = dat.mi)
+me.6 <- lmer(formula = GSI ~ month + (1 + DDS4|SN) + (1 + DDS1|SN) + (1 + NEW_GRP|SN) + (1 + month|SN), data = dat.mi)
+me.7 <- lmer(formula = GSI ~ month + (1 + NEW_GRP + DDS1 + DDS4|SN), data = dat.mi)
+me.8 <- lmer(formula = GSI ~ month + (1 + NEW_GRP + DDS1|SN), data = dat.mi)
+me.9 <- lmer(formula = GSI ~ month + (1 + NEW_GRP + DDS4|SN), data = dat.mi)
+
+# anova(me.1, me.2, me.3, me.4, me.5, me.6, me.7, me.8, me.9)
+# summary(me.3)
+
+# get me model stats
+group_names <- c("Mean GSI at Month = 0", "Estimated Per- Month Change in GSI")
+param_estimate <- round(c(summary(me.3)$coefficients[1,1], summary(me.3)$coefficients[2,1]), 3)
+param_se <- round(c(summary(me.3)$coefficients[1,2], summary(me.3)$coefficients[2,2]), 3)
+p_value_param <- c("< 0.001", "< 0.001")
+
+# create table
+table3 <- cbind(group_names, param_estimate,param_se,p_value_param)
+table3.names <- c("Parameter","Estimated Value","Standard Error","p-value")
+colnames(table3) <- table3.names
+rownames(table3) <- NULL
+
+knitr::kable(table3,caption="Parameter estimates and p-values for the fitted mixed-effects regression model of the form shown in Equation 2")
+```
+
+
+
+
+

@@ -1,0 +1,35 @@
+
+
+\begin{centering}
+
+\vspace{3 cm}
+
+\Huge
+
+{\bf Interventions that Reduce Mental Distress Across Months}
+
+\vspace{1 cm}
+
+\Large
+Consulting Report prepared for Dr. Lang Wu
+
+\vspace{3 cm}
+
+\large
+Trevor Kwan
+
+\vspace{2 cm}
+
+April 22, 2021
+
+\vspace{2 cm}
+
+\normalsize
+Department of Statistics
+
+\normalsize
+University of British Columbia
+
+\vspace{1 cm}
+
+\end{centering}

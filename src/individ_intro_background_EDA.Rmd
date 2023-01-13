@@ -1,0 +1,171 @@
+
+# 1. Introduction
+
+#### Background
+The study investigates changes in subjects' mental distress over time in an intervention group and a control group. 
+
+#### Methods
+Subjects answered questionnaires at baseline (month = 0), 3, 6, 18, and 60 months. These questionnaires measured a number of variables, including mental distress (GSI), gender, and education.
+
+#### Measurement (Variable Descriptions)
+The independent variable was group status. All subjects were randomly assigned into one of two groups: a treatment/intervention group and a control group. Other predictor variables, including gender and education, were measured in the questionnaires.
+
+The dependent variable was the Global Severity Index (GSI). The GSI is used as a measure of mental distress in subjects. A higher GSI score implies a higher level of mental distress.
+
+#### Objectives
+The main objectives of the study are to compare the treatment effect with the control effect on reducing mental distress, to study how mental distress changes over time in all groups, and to investigate whether changes in mental distress can be explained by the treatment variable or other predictor variables.
+
+#### Statistical Questions of Interest
+There was interest in investigating whether subjects' mental distress in both treatment groups decrease significantly over time. There was also interest in testing the effectiveness of the treatment. If a significant difference in subjects' mental distress between the treatment groups is found, the treatment is considered effective.
+
+#### Why is the problem important?
+If a treatment is found to be effective in reducing mental distress in subjects, this intervention can be recommended to people facing overwhelming levels of mental distress.
+
+<!-- #### delete later -->
+<!-- Objectives: -->
+<!-- - compare treatment with control on reducing GSI -->
+<!-- - see how subjects' GSI changes over time -->
+<!-- - see if changes in GSI over time can be partially explained by treatment variable, gender variable, or education variable -->
+
+<!-- Statistical Questions: -->
+<!-- - Do subjects' GSI decrease significantly in treat group? In control group? (month is predictor, mixed effects regression) -->
+<!-- - Is there a sig difference in GSI between treat and control? (pre-post phase example) -->
+
+<!-- "classes" == "gender" or "education" -->
+
+# 2. Exploratory Data Analysis (EDA)
+
+A large number of observations seem to be missing (see Table 1). The rate of missing observations per month was found to be greater for later months in comparison to earlier months (see Table 2). Exploratory data analysis was done using only data without missing observations. The data were examined for trends corresponding to the research questions: trajectory of mental distress over time and differences in mental distress between treatment and control groups.
+
+```{r}
+dat <- read.table("data/data_dep.txt", header = TRUE)
+dat <- dat %>% 
+  select(SN, NEW_GRP, month, DDS1, DDS4, GSI)
+```
+
+
+
+
+```{r, fig.cap = "Descriptive Summary Statistics"}
+# table of summary statistics
+EDA_df <- data.frame(
+  Statistic = c("Number of Observations (Rows)",
+                "Number of Observations with Missing Data (Rows)",
+                "Number of Complete Observations",
+                "Number of Unique Subjects",
+                "Number of Unique Education Levels",
+                "Mean GSI", 
+                "Standard Deviation GSI"),
+  Value = c(nrow(dat), 
+            sum(!complete.cases(dat)), 
+            sum(complete.cases(dat)), 
+            length(unique(dat$SN)),
+            sum(!is.na(unique(dat$DDS4))), 
+            mean(!is.na(dat$GSI)),
+            sd(!is.na(dat$GSI)))
+)
+
+EDA_df$Value <- round(EDA_df$Value, 1)
+
+knitr::kable(EDA_df, caption = "Descriptive Summary Statistics")
+```
+
+
+```{r}
+# extract treatment weeks list
+months_unique <- dat$month %>% 
+  unique() 
+
+# get only rows with complete cases
+dat.cc <- dat[complete.cases(dat),]
+
+# initialize empty list
+missing_list <- list()
+
+# fill in list of treatment weeks with missing values
+for (x in as.factor(months_unique)) {
+  total <- dat %>% 
+  filter(month == x) %>% 
+  nrow()
+  
+  complete <- dat.cc %>% 
+  filter(month == x) %>% 
+  nrow()
+  
+  missing <- total - complete
+  
+  missing_list[x] <- missing
+}
+
+# clean data into a table
+missing_df <- as.data.frame(missing_list) %>% 
+  t()
+missing_df <- cbind(month = rownames(missing_df), missing_df)
+rownames(missing_df) <- 1:nrow(missing_df)
+missing_df <- as.data.frame(missing_df)
+missing_df <- missing_df %>% 
+  mutate(month = gsub("X", "", month))
+colnames(missing_df) <- c("Month", "Number of Missing Observations")
+missing_df$`Month`<- as.integer(missing_df$`Month`)
+missing_df <- missing_df[order(missing_df$`Month`),]
+rownames(missing_df) <- NULL
+
+# convert to rate
+missing_df$`Number of Missing Observations` <- round(as.integer(missing_df$`Number of Missing Observations`)/sum(!complete.cases(dat)), 2)
+colnames(missing_df) <- c("Month", "Missing Rate")
+
+kable(missing_df, row.names = NA, caption = "Rate of Missing Observations By Month")
+```
+
+Large variations in GSI per month were found between individuals, indicating mixed-effects models in formal analysis to be useful (see Figure 1). Overall trends seemed to indicate that GSI scores were decreasing over time in both treatment and control groups (see Figure 1 and Figure 2). Grouping individuals by treatment status showed the median GSI of the treatment group to be slightly higher than the median GSI of the control group (see Figure 3). A two-sample t-test was conducted to explore the possibility of a significant difference in GSI scores across treatment groups, but the difference was not found to be significant (see Figure 3). A Wilcoxon test was also conducted since t-tests are sensitive to outliers, and this difference was found to be significant (see Figure 3). The figures in this section reflect only the data for which there were no missing observations.
+
+```{r, fig.cap = "Individual GSI Scores Across Months", fig.dim = c(8,5)}
+set.seed(550)
+
+# plot individual student trajectories for all
+plot1 <- dat.cc %>%
+  ggplot(aes(x = month, y = GSI, group = SN)) + 
+  geom_line() +
+  geom_point() +
+  labs(x = "Month", y = "GSI", title = "All Individual Subject GSI Scores")
+
+# plot individual student trajectories for some
+random_sample_SN <- sample(dat.cc$SN, size = 10)
+
+plot2 <- dat.cc %>% 
+  filter(SN %in% random_sample_SN) %>% 
+  ggplot(aes(x = month, y = GSI, group = SN)) + 
+  geom_line() +
+  geom_point() +
+  labs(x = "Month", y = "GSI", title = "Ten Randomly Sampled Subjects")
+
+grid.arrange(plot1, plot2, nrow = 1)
+```
+
+```{r, fig.cap = "GSI Scores Across Months Grouped By Treatment Group", fig.dim = c(8,4)}
+# turn it into a factor
+dat.cc$month <- as.factor(dat.cc$month)
+dat.cc$NEW_GRP <- as.factor(dat.cc$NEW_GRP)
+levels(dat.cc$NEW_GRP) <- c("Intervention", "Control")
+
+dat.cc %>%
+  ggplot(aes(x=month,y=GSI,color=NEW_GRP))+geom_boxplot()+ 
+  labs(x = "Month", y = "GSI", color = "Group") + facet_wrap(~NEW_GRP)
+```
+
+```{r, fig.cap = "GSI Scores Across Treatment Groups", fig.dim = c(8,4.9)}
+ggplot(dat.cc, aes(x = NEW_GRP, y = GSI)) +
+  geom_boxplot() +   labs(x = "Group", y = "GSI") + 
+  stat_compare_means(method = "t.test", label.x = 1.35, label.y = 2.3) +
+  stat_compare_means(method = "wilcox.test", label.x = 1.35, label.y = 2)
+```
+
+
+
+
+
+
+
+
+
+

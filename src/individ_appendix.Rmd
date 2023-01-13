@@ -1,0 +1,99 @@
+# Appendix
+
+## Examination of Normality Assumptions
+
+```{r}
+dat.treat <- dat.mi %>% 
+  filter(NEW_GRP == 1)
+dat.control <- dat.mi %>% 
+  filter(NEW_GRP == 2)
+
+shapiro.test(dat.treat$GSI)
+shapiro.test(dat.control$GSI)
+```
+
+```{r}
+hist(dat.treat$GSI, main = "Treatment GSI Scores Distribution", xlab = "GSI", breaks = 20)
+hist(dat.control$GSI, main = "Control GSI Scores Distribution", xlab = "GSI", breaks = 20)
+```
+
+
+## Mixed-Effects Model Selection
+
+```{r}
+# only treatment group as fixed variable (model selection)
+me.a <- lmer(formula = GSI ~ NEW_GRP + (1 + month + DDS1 + DDS4|SN), data = dat.mi)
+me.b <- lmer(formula = GSI ~ NEW_GRP + (1 + DDS1 + DDS4|SN), data = dat.mi)
+me.c <- lmer(formula = GSI ~ NEW_GRP + (1|month) + (1|DDS1) + (1|DDS4) + (1|SN), data = dat.mi)
+me.d <- lmer(formula = GSI ~ NEW_GRP + (1 + month|SN), data = dat.mi)
+me.e <- lmer(formula = GSI ~ NEW_GRP + (1 + DDS1 + DDS4|SN), data = dat.mi)
+me.f <- lmer(formula = GSI ~ NEW_GRP + (1|SN), data = dat.mi)
+
+anova.treat <- anova(me.a, me.b, me.c, me.d, me.e, me.f)
+
+# create table
+anova.AIC <- anova.treat$AIC
+anova.BIC <- anova.treat$BIC
+anova.p_value <- anova.treat$`Pr(>Chisq)`
+table4 <- cbind(anova.AIC, anova.BIC, anova.p_value)
+rownames(table4) <- rownames(anova.treat)
+colnames(table4) <- c("AIC", "BIC", "p-value")
+
+knitr::kable(table4, caption = "Mixed-Effects Model Selection with only treatment variable as fixed variable")
+```
+
+```{r}
+# only month as fixed variable (model selection)
+me.1 <- lmer(formula = GSI ~ month + (1 + month|SN), data = dat.mi)
+me.2 <- lmer(formula = GSI ~ month + (1 + month + DDS1 + DDS4|SN), data = dat.mi)
+me.3 <- lmer(formula = GSI ~ month + (1 + month + DDS1|SN), data = dat.mi)
+me.4 <- lmer(formula = GSI ~ month + (1 + month + DDS4|SN), data = dat.mi)
+me.5 <- lmer(formula = GSI ~ month + (1|DDS1) + (1|DDS4) + (1|SN) + (1|NEW_GRP), data = dat.mi)
+me.6 <- lmer(formula = GSI ~ month + (1 + DDS4|SN) + (1 + DDS1|SN) + (1 + NEW_GRP|SN) + (1 + month|SN), data = dat.mi)
+
+anova.month <- anova(me.1, me.2, me.3, me.4, me.5, me.6)
+
+# create table
+anova.AIC <- anova.month$AIC
+anova.BIC <- anova.month$BIC
+anova.p_value <- anova.month$`Pr(>Chisq)`
+table5 <- cbind(anova.AIC, anova.BIC, anova.p_value)
+rownames(table5) <- rownames(anova.month)
+colnames(table5) <- c("AIC", "BIC", "p-value")
+
+knitr::kable(table5, caption = "Mixed-Effects Model Selection with only month variable as fixed variable")
+```
+
+
+## Fit statistics for Mixed-Effects Treatment Comparison Model (Equation 1):
+
+```{r}
+summary(me.c)
+```
+
+## Fit statistics for Mixed-Effects GSI Across Months Regression (Equation 2):
+
+```{r}
+summary(me.3)
+```
+
+## Model Diagnostics for Mixed-Effects Regression Model (Equation 2)
+
+```{r, echo=FALSE, figures-side2, fig.show="hold", out.width="47%", fig.cap= "Residual and Normal-Quantile plots for the mixed effect regression model of Equation 2"}
+plot(fitted(me.3),resid(me.3),xlab="Fitted Values",ylab="Residuals")
+abline(0,0)
+qqnorm(resid(me.3))
+qqline(resid(me.3))
+```
+
+
+
+
+
+
+
+
+
+
+
+
